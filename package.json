@@ -1,0 +1,41 @@
+{
+  "name": "warcar",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "WARC to CAR",
+  "author": "Robin Berjon <robin@berjon.com>",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "mocha"
+  },
+  "bin": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darobin/warcar.git"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "mocha": true,
+      "es2021": true
+    },
+    "extends": "eslint:recommended",
+    "overrides": [],
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
+    "rules": {}
+  },
+  "devDependencies": {
+    "eslint": "^8.26.0",
+    "mocha": "^11.6.0"
+  },
+  "dependencies": {
+    "@atcute/car": "^3.1.1",
+    "@atcute/cbor": "^2.2.4",
+    "@atcute/cid": "^2.2.3",
+    "commander": "^14.0.0",
+    "warcio": "^2.4.4"
+  }
+}
