@@ -1,5 +1,5 @@
 {
-  "name": "warcar",
+  "name": "@dasl/warcar",
   "type": "module",
   "version": "0.0.1",
   "description": "WARC to CAR",
@@ -8,7 +8,9 @@
   "scripts": {
     "test": "mocha"
   },
-  "bin": {},
+  "bin": {
+    "warcar": "./bin.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/darobin/warcar.git"
