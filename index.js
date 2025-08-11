@@ -33,6 +33,7 @@ class CARStreamWriter {
     this.writeVarInt(bytes.byteLength + cid.bytes.byteLength);
     this.#stream.write(cid.bytes);
     this.#stream.write(bytes);
+    return cid;
   }
   async writeDRISL (data) {
     const drisl = encodeDRISL(data);
@@ -44,32 +45,41 @@ class CARStreamWriter {
 }
 
 // TODO:
-//  - should we handle application/warc-fields as DRISL
-export async function warc2car (warcStream, carStream) {
+//  - missing HTTP headers!!!
+//  - warcinfo and metadata have payloads…
+export async function warc2car (warcStream, carStream, options) {
   const parser = new WARCParser(warcStream);
   const carWriter = new CARStreamWriter(carStream);
   // Write us some CAR headers
   carWriter.writeCARMetadata();
 
   // For each WARC record
-  const seenPayloads = new Set();
+  const seenCIDs = new Set();
   for await (const record of parser) {
-    const { warcType: type, warcHeaders: { headers } } = record;
-    // These have no payload, just encode the DRISL
-    if (type === 'warcinfo' || type === 'metadata') {
-      carWriter.writeDRISL(castForDRISL(headers));
+    const { warcHeaders, httpHeaders } = record;
+    let cleanHTTPHeaders, headersCID, payloadCID, buffer;
+    if (httpHeaders) {
+      cleanHTTPHeaders = castForDRISL(httpHeaders.headers);
+      headersCID = await createCID(CODEC_DRISL, encodeDRISL(cleanHTTPHeaders));
+      warcHeaders.headers.set('headers-cid', headersCID);
     }
-    else {
-      const chunks = [];
-      for await (const chunk of record) chunks.push(chunk);
-      const buffer = Buffer.concat(chunks);
-      const cid = await createCID(CODEC_RAW, buffer);
-      const cidStr = stringifyCID(cid);
-      headers.set('payload-cid', cid);
-      carWriter.writeDRISL(castForDRISL(headers));
-      if (seenPayloads.has(cidStr)) continue;
-      seenPayloads.add(cidStr);
-      carWriter.writeRaw(buffer);
+    const chunks = [];
+    for await (const chunk of record) chunks.push(chunk);
+    if (chunks.length) {
+      buffer = Buffer.concat(chunks);
+      payloadCID = await createCID(CODEC_RAW, buffer);
+      warcHeaders.headers.set('payload-cid', payloadCID);
+    }
+    carWriter.writeDRISL(castForDRISL(warcHeaders.headers));
+    if (cleanHTTPHeaders) {
+      const headersCIDStr = stringifyCID(headersCID);
+      if (!seenCIDs.has(headersCIDStr)) carWriter.writeDRISL(cleanHTTPHeaders);
+      if (options?.skipSeenCIDs) seenCIDs.add(headersCIDStr);
+    }
+    if (chunks.length) {
+      const cidStr = stringifyCID(payloadCID);
+      if (!seenCIDs.has(cidStr)) carWriter.writeRaw(buffer);
+      if (options?.skipSeenCIDs) seenCIDs.add(cidStr);
     }
   }
 }
