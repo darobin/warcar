@@ -6,7 +6,7 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { program } from 'commander';
 import makeRel from './lib/rel.js';
-import { WARC_TYPE, CAR_TYPE, UNKNOWN_TYPE, warc2car, car2warc } from "./index.js";
+import { WARC_TYPE, CAR_TYPE, TILE_TYPE, UNKNOWN_TYPE, warc2car, car2warc, warc2tile } from "./index.js";
 
 const rel = makeRel(import.meta.url);
 const { version } = JSON.parse(await readFile(rel('./package.json')));
@@ -16,16 +16,21 @@ program
   .description('Convert between WARC and CAR')
   .version(version)
   .argument('<input>', 'path to either a WARC or a CAR as input')
-  .argument('<output>', 'path to either a CAR or a WARC as ouput (has to be different from the previous)')
+  .argument('<output>', 'path to either a CAR, tile, or a WARC as ouput (has to be different from the previous)')
   .action(async (input, output) => {
     input = absolutise(input);
     output = absolutise(output);
     const inputType = typeFromPath(input);
     const outputType = typeFromPath(output);
     if (inputType === outputType) die(`Both files are the same kind.`)
+    if (inputType === TILE_TYPE) die(`Cannot convert from tiles.`)
     if (inputType === UNKNOWN_TYPE) die(`File ${input} of unknown type.`)
     if (outputType === UNKNOWN_TYPE) die(`File ${outputType} of unknown type.`)
-    if (inputType === WARC_TYPE) return await warc2car(createReadStream(input), createWriteStream(output));
+    if (inputType === WARC_TYPE) {
+      if (outputType === CAR_TYPE) return await warc2car(createReadStream(input), createWriteStream(output));
+      return await warc2tile(createReadStream(input), createWriteStream(output));
+    }
+    if (outputType === TILE_TYPE) die(`Cannot convert CAR to tiles.`)
     await car2warc(createReadStream(input), createWriteStream(output));
   })
 ;
@@ -39,6 +44,7 @@ function typeFromPath (path) {
   const ext = extname(path).toLowerCase();
   if (ext === '.warc') return WARC_TYPE;
   if (ext === '.car') return CAR_TYPE;
+  if (ext === '.tile') return TILE_TYPE;
   return UNKNOWN_TYPE;
 }
 
