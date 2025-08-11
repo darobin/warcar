@@ -58,7 +58,7 @@ export async function warc2car (warcStream, carStream, options) {
   for await (const record of parser) {
     const { warcHeaders, httpHeaders } = record;
     let cleanHTTPHeaders, headersCID, payloadCID, buffer;
-    if (httpHeaders) {
+    if (httpHeaders?.headers) {
       cleanHTTPHeaders = castForDRISL(httpHeaders.headers);
       headersCID = await createCID(CODEC_DRISL, encodeDRISL(cleanHTTPHeaders));
       warcHeaders.headers.set('headers-cid', headersCID);
@@ -107,7 +107,7 @@ const numericFields = {
   'warc-segment-number': 'integer',
   'warc-segment-total-length': 'integer',
 };
-function castForDRISL (fields) {
+export function castForDRISL (fields) {
   if (fields instanceof Headers) fields = headers2object(fields);
   const ret = {};
   Object.keys(fields).forEach(k => {
@@ -115,6 +115,7 @@ function castForDRISL (fields) {
     if (numericFields[key]) ret[key] = parseInt(fields[k], 10) || 0;
     else ret[key] = fields[k];
   });
+  return ret;
 }
 
 function headers2object (h) {
